@@ -74,7 +74,7 @@ else:
     from tkinter import filedialog, messagebox
 
 from kconfiglib import Symbol, Choice, MENU, COMMENT, MenuNode, \
-                       BOOL, TRISTATE, STRING, INT, HEX, \
+                       BOOL, TRISTATE, STRING, RAWSTR, INT, HEX, \
                        AND, OR, \
                        expr_str, expr_value, split_expr, \
                        standard_sc_expr_str, \
@@ -930,7 +930,7 @@ def _node_str(node):
 
     if isinstance(node.item, Symbol):
         sym = node.item
-        if sym.orig_type == STRING:
+        if sym.orig_type in (STRING, RAWSTR):
             s += ": " + sym.str_value
         elif sym.orig_type in (INT, HEX):
             s = "({}) {}".format(sym.str_value, s)
@@ -972,7 +972,7 @@ def _img_tag(node):
     if item in (MENU, COMMENT) or not item.orig_type:
         return ""
 
-    if item.orig_type in (STRING, INT, HEX):
+    if item.orig_type in (STRING, RAWSTR, INT, HEX):
         return "edit"
 
     # BOOL or TRISTATE
@@ -1116,7 +1116,7 @@ def _changeable(node):
     if not (node.prompt and expr_value(node.prompt[1])):
         return False
 
-    return sc.orig_type in (STRING, INT, HEX) or len(sc.assignable) > 1 \
+    return sc.orig_type in (STRING, RAWSTR, INT, HEX) or len(sc.assignable) > 1 \
            or _is_y_mode_choice_sym(sc)
 
 
@@ -1227,7 +1227,7 @@ def _change_node(node, parent):
     # sc = symbol/choice
     sc = node.item
 
-    if sc.type in (INT, HEX, STRING):
+    if sc.type in (INT, HEX, STRING, RAWSTR):
         s = _set_val_dialog(node, parent)
 
         # Tkinter can return 'unicode' strings on Python 2, which Kconfiglib
@@ -2195,6 +2195,7 @@ def _value_info(sym):
     # Returns a string showing 'sym's value
 
     # Only put quotes around the value for string symbols
+    # RAWSTR values are not quoted (this is the key difference)
     return "Value: {}\n".format(
         '"{}"'.format(sym.str_value)
         if sym.orig_type == STRING
