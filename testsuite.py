@@ -2750,6 +2750,58 @@ menu "menu"
         os.environ.pop("KCONFIG_WARN_UNDEF")
 
 
+    print("Testing option no_quotes")
+
+    c = Kconfig("Kconfiglib/tests/Kno_quotes")
+
+    # Test default values and no_quotes flag
+    verify(c.syms["PRINTF_CALL"].no_quotes == True)
+    verify_value("PRINTF_CALL", "printf")
+    verify(c.syms["CUSTOM_PREFIX"].no_quotes == True)
+    verify_value("CUSTOM_PREFIX", "mylib_")
+    verify(c.syms["ARCH_PREFIX"].no_quotes == True)
+    verify_value("ARCH_PREFIX", "")
+    verify(c.syms["STRING_FOR_COMPARISON"].no_quotes == False)
+    verify_value("STRING_FOR_COMPARISON", "test_value")
+    verify(c.syms["STRING_NO_DEFAULT"].no_quotes == False)
+    verify_value("STRING_NO_DEFAULT", "")
+    verify(c.syms["ENABLE_SPECIAL"].no_quotes == False)
+    verify_value("ENABLE_SPECIAL", "n")
+
+    # Test setting user values
+    assign_and_verify("PRINTF_CALL", "fprintf")
+    assign_and_verify("CUSTOM_PREFIX", "prefix_")
+    assign_and_verify("ARCH_PREFIX", "arch_")
+
+    # Test that string values still work with quotes
+    assign_and_verify("STRING_FOR_COMPARISON", "new_string")
+
+    # Test header generation format
+    def verify_header_content(sym_name, expected_line):
+        # Verify that the symbol generates the expected line in header output
+        sym = c.syms[sym_name]
+        if sym._write_to_conf:
+            # Generate the header line that would be produced
+            val = sym.str_value
+            if sym.orig_type == STRING:
+                if sym.no_quotes:
+                    actual = '#define CONFIG_{} {}'.format(sym_name, val)
+                else:
+                    actual = '#define CONFIG_{} "{}"'.format(sym_name, escape(val))
+            else:
+                return  # Not applicable
+            verify(actual == expected_line,
+                   'expected header line "{}", got "{}"'.format(expected_line, actual))
+
+    # Verify no_quotes generates lines without quotes
+    verify_header_content("PRINTF_CALL", "#define CONFIG_PRINTF_CALL fprintf")
+    verify_header_content("CUSTOM_PREFIX", "#define CONFIG_CUSTOM_PREFIX prefix_")
+    verify_header_content("ARCH_PREFIX", "#define CONFIG_ARCH_PREFIX arch_")
+
+    # Verify normal string generates lines with quotes
+    verify_header_content("STRING_FOR_COMPARISON", "#define CONFIG_STRING_FOR_COMPARISON \"new_string\"")
+
+
     print("\nAll selftests passed\n" if all_passed else
           "\nSome selftests failed\n")
 

@@ -1,0 +1,51 @@
+config PRINTF_CALL
+	string "Printf function name"
+	default "printf"
+	option no_quotes
+	help
+		Printf function to use for debugging
+
+config CUSTOM_PREFIX
+	string "Function prefix"
+	default "mylib_"
+	option no_quotes
+	help
+		Prefix for all library functions
+
+config ARCH_PREFIX
+	string "Architecture code prefix"
+	default ""
+	option no_quotes
+	help
+		Architecture-specific prefix
+
+config STRING_FOR_COMPARISON
+	string "Regular string for comparison"
+	default "test_value"
+	help
+		Regular string to verify differences
+
+config RAWSTR_WITH_SPACES
+	string "String with spaces"
+	default "value with spaces"
+	option no_quotes
+	help
+		Test spaces in no_quotes string values
+
+config STRING_NO_DEFAULT
+	string "String without default"
+	help
+		Test string with no default value
+
+config ENABLE_SPECIAL
+	bool "Enable special string value"
+	default n
+	help
+		Enables special no_quotes configuration
+
+config STRING_CONDITIONAL
+	string "Conditional string"
+	default "default_val"
+	default "special_val" if ENABLE_SPECIAL
+	help
+		String with conditional default

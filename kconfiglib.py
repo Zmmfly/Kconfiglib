@@ -1484,8 +1484,14 @@ class Kconfig(object):
                         .format(self.config_prefix, sym.name))
 
             elif sym.orig_type is STRING:
-                add('#define {}{} "{}"\n'
-                    .format(self.config_prefix, sym.name, escape(val)))
+                if getattr(sym, 'no_quotes', False):
+                    # Generate unquoted #define for string symbols with option no_quotes
+                    add('#define {}{} {}\n'
+                        .format(self.config_prefix, sym.name, val))
+                else:
+                    # Normal string symbol with quotes
+                    add('#define {}{} "{}"\n'
+                        .format(self.config_prefix, sym.name, escape(val)))
 
             else:  # sym.orig_type in _INT_HEX:
                 if sym.orig_type is HEX and \
@@ -3257,7 +3263,30 @@ class Kconfig(object):
                     node.item.is_allnoconfig_y = True
 
                 else:
-                    self._parse_error("unrecognized option")
+                    # Check for custom options like 'no_quotes'
+                    # The option name might be a string or a symbol reference
+                    if self._tokens_i < len(self._tokens):
+                        option_token = self._tokens[self._tokens_i]
+                        if option_token.__class__ is str:
+                            option_name = option_token
+                        else:
+                            # It's a symbol (constant or reference), get its name
+                            option_name = option_token.name
+
+                        if option_name == "no_quotes":
+                            if node.item.__class__ is not Symbol:
+                                self._parse_error("the 'no_quotes' option is only "
+                                                  "valid for symbols")
+                            if node.item.orig_type != STRING:
+                                self._parse_error("the 'no_quotes' option is only "
+                                                  "valid for string symbols")
+                            # Consume the token and mark the symbol
+                            self._tokens_i += 1
+                            node.item.no_quotes = True
+                        else:
+                            self._parse_error("unrecognized option '{}'".format(option_name))
+                    else:
+                        self._parse_error("unrecognized option")
 
             elif t0 is _T_MODULES:
                 # 'modules' formerly was 'option modules'. See above for why
@@ -4290,6 +4319,7 @@ class Symbol(object):
         "is_constant",
         "kconfig",
         "name",
+        "no_quotes",
         "nodes",
         "orig_type",
         "ranges",
@@ -4891,6 +4921,8 @@ class Symbol(object):
         self.is_allnoconfig_y = \
         self._was_set = \
         self._write_to_conf = False
+
+        self.no_quotes = False
 
         # See Kconfig._build_dep()
         self._dependents = set()
