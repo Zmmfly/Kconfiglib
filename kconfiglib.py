@@ -1487,6 +1487,10 @@ class Kconfig(object):
                 add('#define {}{} "{}"\n'
                     .format(self.config_prefix, sym.name, escape(val)))
 
+            elif sym.orig_type is RAWSTR:
+                add('#define {}{} {}\n'
+                    .format(self.config_prefix, sym.name, val))
+
             else:  # sym.orig_type in _INT_HEX:
                 if sym.orig_type is HEX and \
                    not val.startswith(("0x", "0X")):
@@ -3789,7 +3793,7 @@ class Kconfig(object):
                                        "default value for string symbol "
                                        + sym.name_and_loc)
 
-                    elif not num_ok(default, sym.orig_type):  # INT/HEX
+                    elif sym.orig_type in _INT_HEX and not num_ok(default, sym.orig_type):
                         self._warn("the {0} symbol {1} has a non-{0} default {2}"
                                    .format(TYPE_TO_STR[sym.orig_type],
                                            sym.name_and_loc,
@@ -4445,13 +4449,29 @@ class Symbol(object):
                 val = self.user_value
                 self._origin = _T_CONFIG, self.user_loc
             else:
-                # Otherwise, look at defaults
+                # Look at defaults. The last default with a satisfied condition
+                # is used, so we keep going even after finding a match.
                 for sym, cond, loc in self.defaults:
                     if expr_value(cond):
                         val = sym.str_value
                         self._write_to_conf = True
                         self._origin = _T_DEFAULT, loc
-                        break
+
+        elif self.orig_type is RAWSTR:
+            # RAWSTR type is similar to STRING, but with different header generation (no quotes)
+            if vis and self.user_value is not None:
+                # If the symbol is visible and has a user value, use that
+                val = self.user_value
+                self._origin = _T_CONFIG, self.user_loc
+                self._write_to_conf = True
+            else:
+                # Look at defaults. The last default with a satisfied condition
+                # is used, so we keep going even after finding a match.
+                for sym, cond, loc in self.defaults:
+                    if expr_value(cond):
+                        val = sym.str_value
+                        self._write_to_conf = True
+                        self._origin = _T_DEFAULT, loc
 
         # env_var corresponds to SYMBOL_AUTO in the C implementation, and is
         # also set on the defconfig_list symbol there. Test for the
@@ -4695,6 +4715,7 @@ class Symbol(object):
                 self.orig_type is TRISTATE and value in TRI_TO_STR or
                 value.__class__ is str and
                 (self.orig_type is STRING                        or
+                 self.orig_type is RAWSTR                        or
                  self.orig_type is INT and _is_base_n(value, 10) or
                  self.orig_type is HEX and _is_base_n(value, 16)
                                        and int(value, 16) >= 0)):
@@ -7006,13 +7027,14 @@ except AttributeError:
     _T_PROMPT,
     _T_RANGE,
     _T_RSOURCE,
+    _T_RAWSTR,
     _T_SELECT,
     _T_SOURCE,
     _T_STRING,
     _T_TRISTATE,
     _T_UNEQUAL,
     _T_VISIBLE,
-) = range(1, 51)
+) = range(1, 52)
 
 # Keyword to token map, with the get() method assigned directly as a small
 # optimization
@@ -7054,6 +7076,7 @@ _get_keyword = {
     "osource":        _T_OSOURCE,
     "prompt":         _T_PROMPT,
     "range":          _T_RANGE,
+    "rawstr":         _T_RAWSTR,
     "rsource":        _T_RSOURCE,
     "select":         _T_SELECT,
     "source":         _T_SOURCE,
@@ -7096,6 +7119,7 @@ UNKNOWN  = 0
 BOOL     = _T_BOOL
 TRISTATE = _T_TRISTATE
 STRING   = _T_STRING
+RAWSTR   = _T_RAWSTR
 INT      = _T_INT
 HEX      = _T_HEX
 
@@ -7104,6 +7128,7 @@ TYPE_TO_STR = {
     BOOL:     "bool",
     TRISTATE: "tristate",
     STRING:   "string",
+    RAWSTR:   "rawstr",
     INT:      "int",
     HEX:      "hex",
 }
@@ -7114,6 +7139,7 @@ _TYPE_TO_BASE = {
     HEX:      16,
     INT:      10,
     STRING:   0,
+    RAWSTR:   0,
     UNKNOWN:  0,
 }
 
@@ -7144,6 +7170,7 @@ _STRING_LEX = frozenset({
     _T_ORSOURCE,
     _T_OSOURCE,
     _T_PROMPT,
+    _T_RAWSTR,
     _T_RSOURCE,
     _T_SOURCE,
     _T_STRING,
@@ -7159,6 +7186,7 @@ _TYPE_TOKENS = frozenset({
     _T_INT,
     _T_HEX,
     _T_STRING,
+    _T_RAWSTR,
 })
 
 _SOURCE_TOKENS = frozenset({

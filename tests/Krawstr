@@ -1,0 +1,47 @@
+config PRINTF_CALL
+	rawstr "Printf function name"
+	default "printf"
+	help
+		Printf function to use for debugging
+
+config CUSTOM_PREFIX
+	rawstr "Function prefix"
+	default "mylib_"
+	help
+		Prefix for all library functions
+
+config ARCH_PREFIX
+	rawstr "Architecture code prefix"
+	default ""
+	help
+		Architecture-specific prefix
+
+config STRING_FOR_COMPARISON
+	string "Regular string for comparison"
+	default "test_value"
+	help
+		Regular string to verify differences
+
+config RAWSTR_WITH_SPACES
+	rawstr "Rawstr with spaces in default"
+	default "value with spaces"
+	help
+		Test spaces in rawstr values
+
+config RAWSTR_NO_DEFAULT
+	rawstr "Rawstr without default"
+	help
+		Test rawstr with no default value
+
+config ENABLE_SPECIAL
+	bool "Enable special rawstr value"
+	default n
+	help
+		Enables special rawstr configuration
+
+config RAWSTR_CONDITIONAL
+	rawstr "Conditional rawstr"
+	default "default_val"
+	default "special_val" if ENABLE_SPECIAL
+	help
+		Rawstr with conditional default

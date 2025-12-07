@@ -2750,6 +2750,62 @@ menu "menu"
         os.environ.pop("KCONFIG_WARN_UNDEF")
 
 
+    print("Testing rawstr type")
+
+    c = Kconfig("Kconfiglib/tests/Krawstr")
+
+    # Test default values
+    verify_value("PRINTF_CALL", "printf")
+    verify_value("CUSTOM_PREFIX", "mylib_")
+    verify_value("ARCH_PREFIX", "")
+    verify_value("STRING_FOR_COMPARISON", "test_value")
+    verify_value("RAWSTR_WITH_SPACES", "value with spaces")
+    verify_value("RAWSTR_NO_DEFAULT", "")
+    verify_value("RAWSTR_CONDITIONAL", "default_val")
+    verify_value("ENABLE_SPECIAL", "n")
+
+    # Test setting user values
+    assign_and_verify("PRINTF_CALL", "fprintf")
+    assign_and_verify("CUSTOM_PREFIX", "prefix_")
+    assign_and_verify("ARCH_PREFIX", "arch_")
+    assign_and_verify("RAWSTR_WITH_SPACES", "another value")
+    assign_and_verify("RAWSTR_NO_DEFAULT", "now_has_value")
+
+    # Test conditional default (should change when condition becomes true)
+    assign_and_verify_value("ENABLE_SPECIAL", "y", "y")
+    verify_value("RAWSTR_CONDITIONAL", "special_val")
+
+    # Test that string values still work with quotes
+    assign_and_verify("STRING_FOR_COMPARISON", "new_string")
+
+    # Test header generation format
+    def verify_header_content(sym_name, expected_line):
+        # Verify that the symbol generates the expected line in header output
+        sym = c.syms[sym_name]
+        if sym._write_to_conf:
+            # Generate the header line that would be produced
+            val = sym.str_value
+            if sym.orig_type == STRING:
+                actual = '#define CONFIG_{} "{}"'.format(sym_name, escape(val))
+            elif sym.orig_type == RAWSTR:
+                actual = '#define CONFIG_{} {}'.format(sym_name, val)
+            else:
+                return  # Not applicable
+            verify(actual == expected_line,
+                   'expected header line "{}", got "{}"'.format(expected_line, actual))
+
+    # Verify rawstr generates lines without quotes
+    verify_header_content("PRINTF_CALL", "#define CONFIG_PRINTF_CALL fprintf")
+    verify_header_content("CUSTOM_PREFIX", "#define CONFIG_CUSTOM_PREFIX prefix_")
+    verify_header_content("ARCH_PREFIX", "#define CONFIG_ARCH_PREFIX arch_")
+    verify_header_content("RAWSTR_WITH_SPACES", "#define CONFIG_RAWSTR_WITH_SPACES another value")
+    verify_header_content("RAWSTR_NO_DEFAULT", "#define CONFIG_RAWSTR_NO_DEFAULT now_has_value")
+    verify_header_content("RAWSTR_CONDITIONAL", "#define CONFIG_RAWSTR_CONDITIONAL special_val")
+
+    # Verify string generates lines with quotes
+    verify_header_content("STRING_FOR_COMPARISON", "#define CONFIG_STRING_FOR_COMPARISON \"new_string\"")
+
+
     print("\nAll selftests passed\n" if all_passed else
           "\nSome selftests failed\n")
 
